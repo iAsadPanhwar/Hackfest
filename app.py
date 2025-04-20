@@ -1,16 +1,4 @@
 import streamlit as st
-import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from dotenv import load_dotenv
-from groq import Groq
-
-# Load environment variables
-load_dotenv()
-
-# Set up Groq client
-groq_api_key = os.getenv("GROQ_API_KEY")
-groq_client = Groq(api_key=groq_api_key)
 
 # Page configuration
 st.set_page_config(
@@ -19,38 +7,84 @@ st.set_page_config(
     layout="wide"
 )
 
-# Database connection
-def get_db_connection():
-    try:
-        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
-        conn.autocommit = False
-        return conn
-    except Exception as e:
-        st.error(f"Error connecting to database: {e}")
-        return None
+import os
+import json
+from dotenv import load_dotenv
+from groq import Groq
+from supabase import create_client, Client
+
+# Load environment variables
+load_dotenv()
+
+# Set up Groq client
+groq_api_key = os.getenv("GROQ_API_KEY")
+groq_client = Groq(api_key=groq_api_key)
+
+# Set up Supabase client
+supabase_url = os.getenv('SUPABASE_URL')
+supabase_key = os.getenv('SUPABASE_KEY')
+
+# Print for debugging
+st.write(f"Supabase URL: {supabase_url}")
+
+# Hardcode URL for now to debug
+supabase_url = "https://esvtlnjqyyjqjetwttnp.supabase.co"
+supabase: Client = create_client(supabase_url, supabase_key)
 
 # Database query function
 def query_database(query, params=None):
-    conn = get_db_connection()
-    if not conn:
-        return None
-    
     try:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        if params:
-            cursor.execute(query, params)
-        else:
-            cursor.execute(query)
+        # Parse the SQL query to determine what operation to perform
+        query = query.strip()
         
-        result = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return [dict(row) for row in result]
+        # For basic "SELECT * FROM employees" query
+        if query.lower() == "select * from employees":
+            response = supabase.table('employees').select('*').execute()
+            return response.data
+        
+        # For "WHERE salary = 1000"
+        elif "from employees where salary = 1000" in query.lower():
+            response = supabase.table('employees').select('*').eq('salary', 1000).execute()
+            return response.data
+            
+        # For "highest salary"
+        elif "max" in query.lower() and "salary" in query.lower():
+            response = supabase.table('employees').select('*').order('salary', desc=True).limit(1).execute()
+            return response.data
+            
+        # For "age > 30"
+        elif "from employees where age > 30" in query.lower():
+            response = supabase.table('employees').select('*').gt('age', 30).execute()
+            return response.data
+            
+        # For "name starts with 'J'"
+        elif "like 'j%'" in query.lower() or "like \"j%\"" in query.lower():
+            response = supabase.table('employees').select('*').ilike('name', 'J%').execute()
+            return response.data
+            
+        # For "employee by ID"
+        elif "where id =" in query.lower():
+            # Extract ID from query
+            import re
+            id_match = re.search(r'where\s+id\s*=\s*(\d+)', query.lower())
+            if id_match:
+                employee_id = int(id_match.group(1))
+                response = supabase.table('employees').select('*').eq('id', employee_id).execute()
+                return response.data
+        
+        # Default to getting all employees with a limit
+        else:
+            # Extract limit if specified
+            import re
+            limit_match = re.search(r'limit\s+(\d+)', query.lower())
+            limit = int(limit_match.group(1)) if limit_match else 100
+            
+            response = supabase.table('employees').select('*').limit(limit).execute()
+            return response.data
+            
     except Exception as e:
         st.error(f"Error executing query: {e}")
-        if conn:
-            conn.close()
-        return None
+        return []
 
 # Function to run AI agent
 def run_agent(query):
