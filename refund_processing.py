@@ -13,14 +13,14 @@ from ai_agent import extract_amount_from_receipt, transcribe_audio, summarize_tr
 load_dotenv()
 
 class RefundProcessing:
-    def __init__(self, supabase_client):
+    def __init__(self, db_client):
         """
         Initialize the Refund Processing component
         
         Args:
-            supabase_client (SupabaseClient): The initialized Supabase client
+            db_client (DatabaseClient): The initialized Database client
         """
-        self.supabase_client = supabase_client
+        self.db_client = db_client
         self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
     
     def display_refund_requests(self):
@@ -34,7 +34,7 @@ class RefundProcessing:
         # Fetch refund requests if not already in session state
         if 'refund_requests' not in st.session_state:
             with st.spinner("Fetching refund requests..."):
-                st.session_state.refund_requests = self.supabase_client.get_refund_requests()
+                st.session_state.refund_requests = self.db_client.get_refund_requests()
         
         # Display refund requests in a table
         if st.session_state.refund_requests:
@@ -87,7 +87,7 @@ class RefundProcessing:
         # Fetch refund requests
         if 'refund_requests' not in st.session_state:
             with st.spinner("Fetching refund requests..."):
-                st.session_state.refund_requests = self.supabase_client.get_refund_requests()
+                st.session_state.refund_requests = self.db_client.get_refund_requests()
         
         # Check if OpenAI API key is available
         if not os.getenv("OPENAI_API_KEY"):
@@ -125,7 +125,7 @@ class RefundProcessing:
         
         if st.button("Process All Images", key="process_all_receipts"):
             with st.spinner("Fetching image list..."):
-                files = self.supabase_client.list_files()
+                files = self.db_client.list_files()
                 
                 if not files:
                     st.warning("No files found in storage.")
@@ -149,7 +149,7 @@ class RefundProcessing:
                     status_text.write(f"Processing {file_name}...")
                     
                     # Get file URL
-                    file_url = self.supabase_client.get_storage_url(file_name)
+                    file_url = self.db_client.get_storage_url(file_name)
                     
                     if not file_url:
                         status_text.write(f"Skipping {file_name}: Unable to get URL")
@@ -190,7 +190,7 @@ class RefundProcessing:
                                     "amount": float(amount)
                                 }
                                 
-                                result = self.supabase_client.update_refund_request(row_id, updated_data)
+                                result = self.db_client.update_refund_request(row_id, updated_data)
                                 
                                 if result:
                                     status_text.write(f"Updated refund request {row_id} with amount ${amount}")
@@ -274,7 +274,7 @@ class RefundProcessing:
         # Fetch refund requests
         if 'refund_requests' not in st.session_state:
             with st.spinner("Fetching refund requests..."):
-                st.session_state.refund_requests = self.supabase_client.get_refund_requests()
+                st.session_state.refund_requests = self.db_client.get_refund_requests()
         
         # Check if OpenAI API key is available
         if not os.getenv("OPENAI_API_KEY"):

@@ -101,7 +101,7 @@ class EmployeeManagement:
         # Fetch employees for selection
         if 'employees' not in st.session_state:
             with st.spinner("Fetching employees..."):
-                st.session_state.employees = self.supabase_client.get_employees()
+                st.session_state.employees = self.db_client.get_employees()
         
         if not st.session_state.employees:
             st.info("No employees available to update.")
@@ -137,7 +137,7 @@ class EmployeeManagement:
                         
                         # Update employee
                         with st.spinner("Updating employee..."):
-                            result = self.supabase_client.update_employee(selected_employee_id, updated_data)
+                            result = self.db_client.update_employee(selected_employee_id, updated_data)
                             
                             if result:
                                 st.success(f"Employee {name} updated successfully!")
@@ -155,7 +155,7 @@ class EmployeeManagement:
         # Fetch employees for selection
         if 'employees' not in st.session_state:
             with st.spinner("Fetching employees..."):
-                st.session_state.employees = self.supabase_client.get_employees()
+                st.session_state.employees = self.db_client.get_employees()
         
         if not st.session_state.employees:
             st.info("No employees available to delete.")
@@ -173,7 +173,7 @@ class EmployeeManagement:
             if confirm:
                 # Delete employee
                 with st.spinner("Deleting employee..."):
-                    result = self.supabase_client.delete_employee(selected_employee_id)
+                    result = self.db_client.delete_employee(selected_employee_id)
                     
                     if result:
                         st.success(f"Employee deleted successfully!")
@@ -205,7 +205,7 @@ class EmployeeManagement:
             
             if st.button("Fetch Employee", key="fetch_by_id"):
                 with st.spinner("Fetching employee..."):
-                    employee = self.supabase_client.get_employee_by_id(employee_id)
+                    employee = self.db_client.get_employee_by_id(employee_id)
                     
                     if employee:
                         st.success("Employee found!")
@@ -225,7 +225,7 @@ class EmployeeManagement:
                         "Equal to": "eq"
                     }
                     
-                    employees = self.supabase_client.get_employees_by_condition("age", operator_map[operator], age_value)
+                    employees = self.db_client.get_employees_by_condition("age", operator_map[operator], age_value)
                     
                     if employees:
                         st.success(f"Found {len(employees)} employees")
@@ -240,7 +240,7 @@ class EmployeeManagement:
             if st.button("Fetch Employees", key="fetch_by_name_contains"):
                 if name_contains:
                     with st.spinner("Fetching employees..."):
-                        employees = self.supabase_client.get_employees_by_condition("name", "like", name_contains)
+                        employees = self.db_client.get_employees_by_condition("name", "like", name_contains)
                         
                         if employees:
                             st.success(f"Found {len(employees)} employees")
@@ -258,7 +258,7 @@ class EmployeeManagement:
                 if starts_with:
                     with st.spinner("Fetching employees..."):
                         # For starts with, we use like but only append % at the end
-                        employees = self.supabase_client.get_employees_by_condition("name", "like", f"{starts_with}%")
+                        employees = self.db_client.get_employees_by_condition("name", "like", f"{starts_with}%")
                         
                         if employees:
                             st.success(f"Found {len(employees)} employees")
@@ -278,8 +278,8 @@ class EmployeeManagement:
             
             if st.button("Fetch Employees", key="fetch_by_salary"):
                 with st.spinner("Fetching employees..."):
-                    employees_min = self.supabase_client.get_employees_by_condition("salary", "gte", min_salary)
-                    employees_max = self.supabase_client.get_employees_by_condition("salary", "lte", max_salary)
+                    employees_min = self.db_client.get_employees_by_condition("salary", "gte", min_salary)
+                    employees_max = self.db_client.get_employees_by_condition("salary", "lte", max_salary)
                     
                     # Find intersection of both results
                     employee_ids_min = {emp['id'] for emp in employees_min}
@@ -299,7 +299,7 @@ class EmployeeManagement:
             if st.button("Run Query", key="custom_query"):
                 with st.spinner("Fetching data..."):
                     # First get employees with 'a' in their name
-                    employees = self.supabase_client.get_employees_by_condition("name", "like", "a")
+                    employees = self.db_client.get_employees_by_condition("name", "like", "a")
                     
                     if employees:
                         # Extract only the required fields
