@@ -1,0 +1,217 @@
+Hackfest x Datathon
+Hackfest x Datathon
+/
+HxD Problem Statements
+HxD Problem Statements
+/
+🤖
+EmerGen Generative AI Problem Statement
+🤖
+EmerGen Generative AI Problem Statement
+🧠 GenAI Module Challenge — Phase 1: Supabase Setup
+Welcome to the GenAI Module Challenge! Your task is to build an AI Agent capable of performing tasks on a Supabase-hosted database.
+
+This is Phase 1, where you’ll set up your Supabase project and populate it with the initial dataset. This step is crucial as it lays the foundation for building your intelligent agent in the next phases.
+
+📦 Step 1: Create a Supabase Project
+Go to https://supabase.com and create a new project.
+Name your project appropriately.
+Head over to the Table Editor to start creating your tables.
+📊 Step 2: Create the Tables
+You’ll be creating two tables: employees and refund_requests.
+
+Make sure RLS (Row Level Security) is OFF
+🧑‍💼 Table:
+employees
+Default Columns (keep as-is)
+id (auto-generated)
+created_at (auto-generated)
+Add the following columns:
+Column Name
+Data Type
+Description
+name
+Text
+Name of the employee
+age
+Numeric
+Age of the employee
+salary
+Numeric
+Salary of the employee
+🗂️ You will be given a CSV file to populate this table with initial data.
+💰 Table:
+refund_requests
+This table stores refund requests submitted by customers.
+
+Column Name
+Data Type
+Description
+name
+Text
+Name of the customer
+amount
+Numeric
+Amount requested for refund
+image_url
+Text
+URL of the image/receipt of the purchase
+audio_url
+Text
+URL of the audio description of the refund request
+🗂️ A separate CSV file will be provided to populate this table as well.
+📂 File Upload
+Step 3: Upload Receipt Images to Supabase Storage
+In this step, you’ll be working with Supabase Storage to host and retrieve files.
+
+You will be given a Google Drive link containing 10 receipt images.
+Download the images and upload them to your Supabase Storage Bucket (you can name it something like receipts).
+Ensure public read access is enabled or securely configured access is set up.
+✅ What’s Next?
+Once your Supabase project is set up and the tables are populated, you’ll be ready for the next phase of the challenge — building your AI Agent to query and manipulate the data intelligently!
+
+Stay tuned and happy building! 🚀
+
+✅ Phase 2 — Agent Task: Get Receipt URL from File Name
+Your AI agent must be able to perform the following:
+
+Accept a file name as input (e.g., receipt_1.png)
+Retrieve and return the public URL of that file from Supabase Storage.
+This task ensures your agent can interact with Supabase Storage, not just the database.
+🤖 Agent Tasks
+Once your Supabase database is ready and populated, your AI agent will be expected to perform the following tasks by interacting with the database:
+
+🔍 Basic Retrieval Tasks
+Fetch all employees
+Return the complete list of employees from the employees table.
+Fetch an employee by ID
+Query the employees table to return a single employee using their unique id.
+Perform simple conditional queries
+Examples include:
+Get the employee whose salary is exactly 1000.
+Get the employee with the highest salary.
+Get all employees whose age is greater than 30, etc.
+Get employees starting with "J"
+These queries are meant to test whether your agent can interpret and execute basic data retrieval tasks using SQL or Supabase APIs.
+🧠 Advanced Agent Task: Populate Refund Table Using Image Analysis
+Once the receipt images are uploaded to your Supabase Storage, your AI agent will now be responsible for updating the refund_requests table automatically using those images.
+
+🎯 Task Objective:
+Your agent must:
+
+Receive a list of file names (e.g., receipt1.png, etc.).
+Retrieve the public URLs for each of these files from Supabase Storage.
+Read each image to determine the total amount mentioned in the receipt. (Hint: Gemini has vision capabilities, just make a separate tool for this)
+Populate the refund_requests table with:
+image_url: the public URL of the image.
+amount: the total amount calculated from the receipt image.
+💡 This task will test your agent’s ability to integrate file handling, URL resolution, and AI-based image analysis to populate structured data.
+Note: For full credit, you agent should do this in one go, not by prompting it to update again and again.
+
+🧾 Input Files
+You will be provided a Google Drive link containing 10 receipt images. Download and upload these images to your Supabase project under a storage bucket (e.g., receipts).
+
+Link: https://drive.google.com/drive/folders/1Aoyft_0CO1jkiaqM8-PoYwo4AZtx4pKU?usp=sharing
+
+Make sure the bucket is public.
+
+🔊 Final Agent Task: Summarize Audio Descriptions
+In this final task, your AI agent will enhance the refund_requests table by interpreting the audio descriptions of refund requests.
+
+🎯 Task Objective:
+You will be provided with a list of audio URLs.
+Populate the audio_url column of the refund_requests table manually using these URLs.
+Your AI agent must then:
+Iterate through each row of the refund_requests table.
+Fetch the corresponding audio file from the audio_url.
+Transcribe and/or translate the audio using tools such as OpenAI Whisper or Grok API.
+Generate a concise summary of what the person is describing in the audio.
+💡 This task evaluates your agent’s ability to work with audio data, perform transcription, and produce useful summaries for downstream use.
+🛠️ Hints & Tools
+Use Whisper API for transcription (supports multiple languages).
+Use Grok API or similar LLMs to clean up and summarize the transcription.
+Store or return the summaries based on how you design your system (e.g., log to console, store in a new column, or print via endpoint).
+📝 Submission Guidelines
+To complete Phase 1 of the GenAI Module Challenge, follow these submission requirements:
+
+🎥 Video Demonstration (Required)
+You must submit a video that clearly shows your AI agent performing all required tasks. This serves as proof of functionality and will be used for evaluation.
+
+✅ The video should demonstrate the full pipeline:
+Data retrieval and querying
+Fetching image URLs from Supabase Storage
+Image analysis and refund table population
+Audio transcription and summarization
+✅ Ideally, show all tasks in one video to prove that your agent can handle them in a single session.
+Submitting separate videos will be taken to mean your agent cannot perform the tasks together.
+✅ Keep the interaction as seamless as possible. It’s acceptable if the agent asks questions or has back-and-forth prompts, but bonus points for agents that require minimal user input.
+✅ You can design your system prompt to be as rich and detailed as needed to guide your agent effectively.
+📂 Code Submission
+Submit all your code and logic in a public GitHub repository.
+Ensure your repo is:
+Well-organized
+Includes clear instructions if setup is required
+Includes any custom scripts or tools used (e.g., for Whisper, Gemini API, etc.)
+🧮 Evaluation Criteria
+Your submission will be graded based on how effectively your AI agent completes each task:
+
+Task
+Weightage
+✅ Basic DB Operations (fetch all, simple queries, insert, update)
+25%
+🔗 URL Retrieval from Storage + Image Analysis + Refund Table Update
+30%
+🔊 Audio Transcription & Summarization for refund_requests.audio_url
+20%
+🎥 Clean, single complete video walkthrough + working code on GitHub
+25%
+Total: 100%
+employees_rows.csv0.5KB
+refund_requests_rows.csv1.5KB
+Show the following tasks:
+RUN THE PROMOTS AS THEY ARE WRITTEN, DON'T CHANGE THEM
+Task 1
+insert a row in employees with the name John doe, salary 30000
+update the new row (You may tell the row id to the agent), make John's age 100
+You may tell the agent the row id
+delete the new row (You may tell the row id to the agent)
+You may tell the agent the row id
+fetch all employees
+fetch all refund requests
+fetch employees with age under 40
+fetch employees that start with the letter "J"
+get me just the names and ages of all employees that have "a" in their name
+get me the names of all the customers who made refund requests.
+get me just the audio urls of all the refunds
+Task 2
+Get all the urls from the storage, the names are refund_req1.png, refund_req2.png and so on till 10. Then read/get info from the image and get the total written in the receipt. Update the respective rows in the refunds table (refund_req1.png is for row 1) with the image_url and the amount in the image
+Note: run the above prompt as it is, if the agent misunderstands or ask questions, you may give further prompts. Ideally your agent should do this task in as few prompts as possible.
+Task 3
+Get all the audio urls from refunds and give me a summary of what is being said in each audio.
+All chat responses with the LLM should be in English
+
+
+
+I have created tables in supabase. With given data. Now based on above requirements I want to this.
+ Tech Stack Setup
+LangChain
+
+Set up memory (e.g., ConversationBufferMemory or ConversationSummaryMemory).
+
+Use LLMChain or AgentExecutor for task execution.
+
+Add tools as needed (search, calculator, custom tools).
+
+LangGraph
+
+Use to define steps in your agent’s logic (nodes, edges).
+
+Each node = specific task (e.g., interpret, plan, act, validate).
+
+Set up a planner+executor-style graph if you expect multi-step tasks.
+
+Groq API
+
+Plug it into LangChain via ChatOpenAI or custom wrapper.
+
+Make sure the model (like mixtral or llama3) is responding well to prompts.
