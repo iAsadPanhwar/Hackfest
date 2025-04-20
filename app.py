@@ -3,6 +3,11 @@ import os
 from supabase_client import SupabaseClient
 from employee_management import EmployeeManagement
 from refund_processing import RefundProcessing
+from dotenv import load_dotenv
+from ai_agent import ask_groq, run_agent
+
+# Load environment variables
+load_dotenv()
 
 # Set page configuration
 st.set_page_config(
@@ -16,8 +21,12 @@ st.set_page_config(
 st.title("🤖 EmerGen AI - Supabase Dashboard")
 st.markdown("""
 This application connects to Supabase to manage employee data and process refund requests 
-with AI-powered image and audio analysis.
+with AI-powered image and audio analysis using Groq LLM with LangChain and LangGraph.
 """)
+
+# Initialize session state for chat messages
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
 
 # Initialize session state for Supabase client
 if 'supabase_client' not in st.session_state:
@@ -37,20 +46,61 @@ if 'supabase_client' not in st.session_state:
 connection_status = st.sidebar.container()
 connection_status.markdown(f"**Status:** {st.session_state.get('connection_status', 'Not Connected')}")
 
+# Check if GROQ API key is available
+groq_api_key = os.getenv("GROQ_API_KEY", "")
+if not groq_api_key:
+    st.sidebar.warning("GROQ API key not found. AI chatbot features may not work properly.")
+
 # Check if OpenAI API key is available
 openai_api_key = os.getenv("OPENAI_API_KEY", "")
 if not openai_api_key:
-    st.sidebar.warning("OpenAI API key not found. Some features may not work properly.")
+    st.sidebar.warning("OpenAI API key not found. Image and audio analysis features may not work properly.")
 
 # Main navigation sidebar
 st.sidebar.title("Navigation")
 page = st.sidebar.radio(
     "Select a page",
-    ["Employee Management", "Refund Requests", "Image Analysis", "Audio Analysis"]
+    ["AI Assistant", "Employee Management", "Refund Requests", "Image Analysis", "Audio Analysis"]
 )
 
 # Display appropriate page based on selection
-if page == "Employee Management":
+if page == "AI Assistant":
+    st.header("Groq AI Assistant")
+    st.markdown("""
+    This AI assistant is powered by Groq's LLM model. You can ask it questions about employee management,
+    refund processing, or any other general query.
+    """)
+    
+    # Display chat messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+    
+    # Chat input
+    if prompt := st.chat_input("How can I help you today?"):
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # Display user message in chat
+        with st.chat_message("user"):
+            st.write(prompt)
+        
+        # Generate response using the agent
+        with st.spinner("Thinking..."):
+            if groq_api_key:
+                response = run_agent(prompt)
+                assistant_response = response.get("response", "I'm sorry, I couldn't generate a response.")
+            else:
+                assistant_response = "GROQ API key not found. Please add it to the environment variables to enable this feature."
+        
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+        
+        # Display assistant response in chat
+        with st.chat_message("assistant"):
+            st.write(assistant_response)
+
+elif page == "Employee Management":
     if st.session_state.get('connection_status') == "Connected":
         employee_mgmt = EmployeeManagement(st.session_state.supabase_client)
         employee_mgmt.display()
