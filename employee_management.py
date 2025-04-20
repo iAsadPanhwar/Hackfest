@@ -2,14 +2,14 @@ import streamlit as st
 import pandas as pd
 
 class EmployeeManagement:
-    def __init__(self, supabase_client):
+    def __init__(self, db_client):
         """
         Initialize the Employee Management component
         
         Args:
-            supabase_client (SupabaseClient): The initialized Supabase client
+            db_client (DatabaseClient): The initialized Database client
         """
-        self.supabase_client = supabase_client
+        self.db_client = db_client
     
     def display(self):
         """Display the employee management interface"""
@@ -49,7 +49,7 @@ class EmployeeManagement:
         # Fetch employees if not already in session state
         if 'employees' not in st.session_state:
             with st.spinner("Fetching employees..."):
-                st.session_state.employees = self.supabase_client.get_employees()
+                st.session_state.employees = self.db_client.get_employees()
         
         # Display employees in a table
         if st.session_state.employees:
@@ -83,7 +83,7 @@ class EmployeeManagement:
                     
                     # Insert employee
                     with st.spinner("Adding employee..."):
-                        result = self.supabase_client.insert_employee(employee_data)
+                        result = self.db_client.insert_employee(employee_data)
                         
                         if result:
                             st.success(f"Employee {name} added successfully!")

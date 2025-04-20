@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from supabase_client import SupabaseClient
+from database_client import DatabaseClient
 from employee_management import EmployeeManagement
 from refund_processing import RefundProcessing
 from dotenv import load_dotenv
@@ -11,16 +11,16 @@ load_dotenv()
 
 # Set page configuration
 st.set_page_config(
-    page_title="EmerGen AI - Supabase Dashboard",
+    page_title="EmerGen AI - Database Dashboard",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # App title and description
-st.title("🤖 EmerGen AI - Supabase Dashboard")
+st.title("🤖 EmerGen AI - Database Dashboard")
 st.markdown("""
-This application connects to Supabase to manage employee data and process refund requests 
+This application connects to PostgreSQL to manage employee data and process refund requests 
 with AI-powered image and audio analysis using Groq LLM with LangChain and LangGraph.
 """)
 
@@ -28,28 +28,30 @@ with AI-powered image and audio analysis using Groq LLM with LangChain and LangG
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
-# Initialize session state for Supabase client
-if 'supabase_client' not in st.session_state:
-    # Get Supabase credentials from environment variables or secrets
-    supabase_url = os.getenv("SUPABASE_URL", "")
-    supabase_key = os.getenv("SUPABASE_KEY", "")
+# Initialize session state for Database client
+if 'db_client' not in st.session_state:
+    # Get Database URL from environment variables or secrets
+    database_url = os.getenv("DATABASE_URL", "")
     
     # Debug info - temporary
-    st.write(f"Supabase URL: {supabase_url}")
-    st.write(f"Supabase Key: {'*' * (len(supabase_key) - 4) + supabase_key[-4:] if supabase_key else 'Not set'}")
+    if database_url:
+        masked_url = database_url.split('@')[0].split(':')[0] + ':****@' + database_url.split('@')[1]
+        st.write(f"Database URL: {masked_url}")
+    else:
+        st.write("Database URL: Not set")
     
-    # Initialize Supabase client
-    if supabase_url and supabase_key:
+    # Initialize Database client
+    if database_url:
         try:
-            st.session_state.supabase_client = SupabaseClient(supabase_url, supabase_key)
+            st.session_state.db_client = DatabaseClient()
             st.session_state.connection_status = "Connected"
-            st.success("Successfully connected to Supabase!")
+            st.success("Successfully connected to the database!")
         except Exception as e:
-            st.error(f"Failed to connect to Supabase: {str(e)}")
+            st.error(f"Failed to connect to the database: {str(e)}")
             st.session_state.connection_status = "Error"
     else:
         st.session_state.connection_status = "Not Connected"
-        st.error("Supabase credentials not found. Please set SUPABASE_URL and SUPABASE_KEY environment variables.")
+        st.error("Database URL not found. Please set DATABASE_URL environment variable.")
 
 # Connection status indicator
 connection_status = st.sidebar.container()
@@ -111,31 +113,31 @@ if page == "AI Assistant":
 
 elif page == "Employee Management":
     if st.session_state.get('connection_status') == "Connected":
-        employee_mgmt = EmployeeManagement(st.session_state.supabase_client)
+        employee_mgmt = EmployeeManagement(st.session_state.db_client)
         employee_mgmt.display()
     else:
-        st.error("Please connect to Supabase first.")
+        st.error("Please connect to the database first.")
 
 elif page == "Refund Requests":
     if st.session_state.get('connection_status') == "Connected":
-        refund_proc = RefundProcessing(st.session_state.supabase_client)
+        refund_proc = RefundProcessing(st.session_state.db_client)
         refund_proc.display_refund_requests()
     else:
-        st.error("Please connect to Supabase first.")
+        st.error("Please connect to the database first.")
 
 elif page == "Image Analysis":
     if st.session_state.get('connection_status') == "Connected":
-        refund_proc = RefundProcessing(st.session_state.supabase_client)
+        refund_proc = RefundProcessing(st.session_state.db_client)
         refund_proc.display_image_analysis()
     else:
-        st.error("Please connect to Supabase first.")
+        st.error("Please connect to the database first.")
 
 elif page == "Audio Analysis":
     if st.session_state.get('connection_status') == "Connected":
-        refund_proc = RefundProcessing(st.session_state.supabase_client)
+        refund_proc = RefundProcessing(st.session_state.db_client)
         refund_proc.display_audio_analysis()
     else:
-        st.error("Please connect to Supabase first.")
+        st.error("Please connect to the database first.")
 
 # Footer
 st.sidebar.markdown("---")
