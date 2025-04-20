@@ -2,6 +2,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+import urllib.parse
 
 load_dotenv()
 
@@ -16,16 +17,33 @@ class DatabaseClient:
     def connect(self):
         """Connect to the PostgreSQL database"""
         try:
-            self.conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+            # Try to connect using DATABASE_URL environment variable
+            db_url = os.getenv('DATABASE_URL')
+            
+            if not db_url:
+                raise ValueError("DATABASE_URL environment variable is not set")
+            
+            # Connect with the DATABASE_URL
+            self.conn = psycopg2.connect(db_url)
+            
+            # Disable autocommit to enable transaction control
+            self.conn.autocommit = False
             print("Database connection successful")
         except Exception as e:
             print(f"Error connecting to database: {e}")
-            raise
+            # Instead of raising, we'll set self.conn to None and continue
+            # This allows the application to run without database access
+            self.conn = None
     
     def _get_cursor(self):
         """Get a cursor with dictionary-like results"""
-        if not self.conn or self.conn.closed:
+        if not self.conn or (self.conn and self.conn.closed):
             self.connect()
+        
+        # If connection is still None after trying to connect, raise an exception
+        if not self.conn:
+            raise ConnectionError("Database connection is not available")
+            
         return self.conn.cursor(cursor_factory=RealDictCursor)
     
     def get_employees(self):
@@ -119,11 +137,13 @@ class DatabaseClient:
             query = f"INSERT INTO employees ({columns}) VALUES ({placeholders}) RETURNING *"
             cursor.execute(query, list(employee_data.values()))
             result = cursor.fetchone()
-            self.conn.commit()
+            if self.conn:
+                if self.conn: self.conn.commit()
             cursor.close()
             return dict(result) if result else None
         except Exception as e:
-            self.conn.rollback()
+            if self.conn:
+                if self.conn: self.conn.rollback()
             print(f"Error inserting employee: {e}")
             return None
     
@@ -145,11 +165,11 @@ class DatabaseClient:
             query = f"UPDATE employees SET {set_clause} WHERE id = %s RETURNING *"
             cursor.execute(query, values)
             result = cursor.fetchone()
-            self.conn.commit()
+            if self.conn: self.conn.commit()
             cursor.close()
             return dict(result) if result else None
         except Exception as e:
-            self.conn.rollback()
+            if self.conn: self.conn.rollback()
             print(f"Error updating employee: {e}")
             return None
     
@@ -167,11 +187,11 @@ class DatabaseClient:
             cursor = self._get_cursor()
             cursor.execute("DELETE FROM employees WHERE id = %s RETURNING id", (employee_id,))
             result = cursor.fetchone()
-            self.conn.commit()
+            if self.conn: self.conn.commit()
             cursor.close()
             return result is not None
         except Exception as e:
-            self.conn.rollback()
+            if self.conn: self.conn.rollback()
             print(f"Error deleting employee: {e}")
             return False
     
@@ -225,14 +245,68 @@ class DatabaseClient:
             query = f"UPDATE refund_requests SET {set_clause} WHERE id = %s RETURNING *"
             cursor.execute(query, values)
             result = cursor.fetchone()
-            self.conn.commit()
+            if self.conn: self.conn.commit()
             cursor.close()
             return dict(result) if result else None
         except Exception as e:
-            self.conn.rollback()
+            if self.conn: self.conn.rollback()
             print(f"Error updating refund request: {e}")
             return None
     
+    def list_files(self):
+        """
+        List all files in storage
+        
+        Returns:
+            list: List of file information dictionaries
+        """
+        try:
+            # For PostgreSQL connection, this would typically be a query to a files table
+            # Since we're transitioning from Supabase, we'll return an empty list for now
+            # and implement proper file storage handling later
+            return []
+        except Exception as e:
+            print(f"Error listing files: {e}")
+            return []
+    
+    def get_storage_url(self, file_name):
+        """
+        Get the public URL for a file in storage
+        
+        Args:
+            file_name (str): The name of the file
+            
+        Returns:
+            str: The public URL of the file or None if not found
+        """
+        try:
+            # In an actual implementation, this would query a files table and return the URL
+            # For now, return None as we're transitioning from Supabase to PostgreSQL
+            return None
+        except Exception as e:
+            print(f"Error getting storage URL: {e}")
+            return None
+    
+    def upload_file(self, file_name, file_bytes):
+        """
+        Upload a file to storage
+        
+        Args:
+            file_name (str): The name to give the file
+            file_bytes (bytes): The file data
+            
+        Returns:
+            str: The public URL of the uploaded file or None if failed
+        """
+        try:
+            # In an actual implementation, this would upload to a file service
+            # and store metadata in a files table in PostgreSQL
+            # For now, return None as we're transitioning
+            return None
+        except Exception as e:
+            print(f"Error uploading file: {e}")
+            return None
+            
     def close(self):
         """Close the database connection"""
         if self.conn:
