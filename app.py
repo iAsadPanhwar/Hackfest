@@ -1,144 +1,211 @@
 import streamlit as st
 import os
-from database_client import DatabaseClient
-from employee_management import EmployeeManagement
-from refund_processing import RefundProcessing
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
-from ai_agent import ask_groq, run_agent
+from groq import Groq
 
 # Load environment variables
 load_dotenv()
 
-# Set page configuration
+# Set up Groq client
+groq_api_key = os.getenv("GROQ_API_KEY")
+groq_client = Groq(api_key=groq_api_key)
+
+# Page configuration
 st.set_page_config(
-    page_title="EmerGen AI - Database Dashboard",
+    page_title="AI Database Assistant",
     page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# App title and description
-st.title("🤖 EmerGen AI - Database Dashboard")
+# Database connection
+def get_db_connection():
+    try:
+        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+        conn.autocommit = False
+        return conn
+    except Exception as e:
+        st.error(f"Error connecting to database: {e}")
+        return None
+
+# Database query function
+def query_database(query, params=None):
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        
+        result = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return [dict(row) for row in result]
+    except Exception as e:
+        st.error(f"Error executing query: {e}")
+        if conn:
+            conn.close()
+        return None
+
+# Function to run AI agent
+def run_agent(query):
+    # Get employees table structure info
+    table_info = """
+    Table: employees
+    Columns:
+    - id (int): primary key
+    - created_at (timestamp): creation timestamp
+    - name (text): employee name
+    - age (numeric): employee age
+    - salary (numeric): employee salary in USD
+    """
+    
+    # Try to run a simple query to get some sample data
+    sample_data = query_database("SELECT * FROM employees LIMIT 3")
+    sample_data_str = str(sample_data) if sample_data else "No sample data available"
+    
+    # Create prompt for Groq
+    system_prompt = f"""You are an AI agent that helps query a PostgreSQL database.
+    You have access to the following database structure:
+    {table_info}
+    
+    Sample data:
+    {sample_data_str}
+    
+    When asked to retrieve or query data, you should:
+    1. Generate the appropriate SQL query
+    2. Execute it via the Python code
+    3. Return the results in a formatted way
+    
+    Do not make up data. Only return data that is actually retrieved from the database.
+    If you cannot answer a question with the available data, say so clearly.
+    """
+    
+    user_prompt = f"User question: {query}\n\nPlease help answer this by querying the employees database. If you need to run a SQL query, include it in your reasoning."
+    
+    try:
+        # Call Groq AI
+        response = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,
+            max_tokens=1024
+        )
+        
+        # Extract AI's thinking
+        ai_reasoning = response.choices[0].message.content
+        
+        # Look for SQL queries in the response
+        import re
+        sql_match = re.search(r'```sql\s*(.*?)\s*```', ai_reasoning, re.DOTALL)
+        
+        result_data = None
+        if sql_match:
+            sql_query = sql_match.group(1).strip()
+            st.info(f"Executing SQL: {sql_query}")
+            # Execute the query
+            result_data = query_database(sql_query)
+        
+        # Prepare the final response
+        if result_data is not None:
+            # Call Groq again with the results to format the response nicely
+            final_prompt = f"""
+            User question: {query}
+            
+            SQL Query executed: {sql_match.group(1) if sql_match else "No SQL executed"}
+            
+            Query Results: {str(result_data)}
+            
+            Please provide a clear, concise answer to the user's question based on the data retrieved.
+            """
+            
+            final_response = groq_client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[
+                    {"role": "system", "content": "You are a helpful database assistant."},
+                    {"role": "user", "content": final_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=1024
+            )
+            
+            return {
+                "response": final_response.choices[0].message.content,
+                "query": sql_match.group(1) if sql_match else "No SQL query was executed",
+                "data": result_data
+            }
+        else:
+            # If no SQL was executed or it failed, just return the AI's reasoning
+            return {
+                "response": ai_reasoning,
+                "query": sql_match.group(1) if sql_match else "No SQL query was executed",
+                "data": None
+            }
+    except Exception as e:
+        return {
+            "response": f"Sorry, I encountered an error: {str(e)}",
+            "query": "",
+            "data": None
+        }
+
+# Main app
+st.title("🤖 AI Database Assistant")
 st.markdown("""
-This application connects to PostgreSQL to manage employee data and process refund requests 
-with AI-powered image and audio analysis using Groq LLM with LangChain and LangGraph.
+Ask me questions about the employee database! I can help you:
+
+- Get all employees
+- Find employees by ID
+- Find employees with specific salaries
+- Get employees by age criteria
+- Search for employees by name
+- And more!
 """)
 
-# Initialize session state for chat messages
-if 'messages' not in st.session_state:
+# Initialize chat history
+if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Initialize session state for Database client
-if 'db_client' not in st.session_state:
-    # Get Database URL from environment variables or secrets
-    database_url = os.getenv("DATABASE_URL", "")
-    
-    # Debug info - temporary
-    if database_url:
-        masked_url = database_url.split('@')[0].split(':')[0] + ':****@' + database_url.split('@')[1]
-        st.write(f"Database URL: {masked_url}")
-    else:
-        st.write("Database URL: Not set")
-    
-    # Initialize Database client
-    if database_url:
-        try:
-            st.session_state.db_client = DatabaseClient()
-            st.session_state.connection_status = "Connected"
-            st.success("Successfully connected to the database!")
-        except Exception as e:
-            st.error(f"Failed to connect to the database: {str(e)}")
-            st.session_state.connection_status = "Error"
-    else:
-        st.session_state.connection_status = "Not Connected"
-        st.error("Database URL not found. Please set DATABASE_URL environment variable.")
-
-# Connection status indicator
-connection_status = st.sidebar.container()
-connection_status.markdown(f"**Status:** {st.session_state.get('connection_status', 'Not Connected')}")
-
-# Check if GROQ API key is available
-groq_api_key = os.getenv("GROQ_API_KEY", "")
-if not groq_api_key:
-    st.sidebar.warning("GROQ API key not found. AI chatbot features may not work properly.")
-
-# Check if OpenAI API key is available
-openai_api_key = os.getenv("OPENAI_API_KEY", "")
-if not openai_api_key:
-    st.sidebar.warning("OpenAI API key not found. Image and audio analysis features may not work properly.")
-
-# Main navigation sidebar
-st.sidebar.title("Navigation")
-page = st.sidebar.radio(
-    "Select a page",
-    ["AI Assistant", "Employee Management", "Refund Requests", "Image Analysis", "Audio Analysis"]
-)
-
-# Display appropriate page based on selection
-if page == "AI Assistant":
-    st.header("Groq AI Assistant")
-    st.markdown("""
-    This AI assistant is powered by Groq's LLM model. You can ask it questions about employee management,
-    refund processing, or any other general query.
-    """)
-    
-    # Display chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
-    
-    # Chat input
-    if prompt := st.chat_input("How can I help you today?"):
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
+# Display chat history
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
         
-        # Display user message in chat
-        with st.chat_message("user"):
-            st.write(prompt)
+        # If there's data, display it in a table
+        if message.get("data"):
+            st.dataframe(message["data"])
+
+# Chat input
+if prompt := st.chat_input("Ask me about the employee database..."):
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    # Display user message
+    with st.chat_message("user"):
+        st.write(prompt)
+    
+    # Generate response
+    with st.spinner("Thinking..."):
+        response = run_agent(prompt)
+    
+    # Add assistant response to chat history with any data
+    st.session_state.messages.append({
+        "role": "assistant", 
+        "content": response["response"],
+        "data": response.get("data")
+    })
+    
+    # Display assistant response
+    with st.chat_message("assistant"):
+        st.write(response["response"])
         
-        # Generate response using the agent
-        with st.spinner("Thinking..."):
-            if groq_api_key:
-                response = run_agent(prompt)
-                assistant_response = response.get("response", "I'm sorry, I couldn't generate a response.")
-            else:
-                assistant_response = "GROQ API key not found. Please add it to the environment variables to enable this feature."
-        
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-        
-        # Display assistant response in chat
-        with st.chat_message("assistant"):
-            st.write(assistant_response)
-
-elif page == "Employee Management":
-    if st.session_state.get('connection_status') == "Connected":
-        employee_mgmt = EmployeeManagement(st.session_state.db_client)
-        employee_mgmt.display()
-    else:
-        st.error("Please connect to the database first.")
-
-elif page == "Refund Requests":
-    if st.session_state.get('connection_status') == "Connected":
-        refund_proc = RefundProcessing(st.session_state.db_client)
-        refund_proc.display_refund_requests()
-    else:
-        st.error("Please connect to the database first.")
-
-elif page == "Image Analysis":
-    if st.session_state.get('connection_status') == "Connected":
-        refund_proc = RefundProcessing(st.session_state.db_client)
-        refund_proc.display_image_analysis()
-    else:
-        st.error("Please connect to the database first.")
-
-elif page == "Audio Analysis":
-    if st.session_state.get('connection_status') == "Connected":
-        refund_proc = RefundProcessing(st.session_state.db_client)
-        refund_proc.display_audio_analysis()
-    else:
-        st.error("Please connect to the database first.")
-
-# Footer
-st.sidebar.markdown("---")
-st.sidebar.markdown("© 2024 EmerGen AI")
+        # If there's data, display it in a table
+        if response.get("data"):
+            st.dataframe(response["data"])
