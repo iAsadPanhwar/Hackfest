@@ -1,0 +1,19 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "groq>=0.22.0",
+    "langchain>=0.3.23",
+    "langchain-core>=0.3.54",
+    "langchain-groq>=0.3.2",
+    "langgraph>=0.3.31",
+    "openai>=1.75.0",
+    "pandas>=2.2.3",
+    "pillow>=11.2.1",
+    "python-dotenv>=1.1.0",
+    "requests>=2.32.3",
+    "streamlit>=1.44.1",
+    "supabase>=2.15.0",
+]
