@@ -34,10 +34,19 @@ if 'supabase_client' not in st.session_state:
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_key = os.getenv("SUPABASE_KEY", "")
     
+    # Debug info - temporary
+    st.write(f"Supabase URL: {supabase_url}")
+    st.write(f"Supabase Key: {'*' * (len(supabase_key) - 4) + supabase_key[-4:] if supabase_key else 'Not set'}")
+    
     # Initialize Supabase client
     if supabase_url and supabase_key:
-        st.session_state.supabase_client = SupabaseClient(supabase_url, supabase_key)
-        st.session_state.connection_status = "Connected"
+        try:
+            st.session_state.supabase_client = SupabaseClient(supabase_url, supabase_key)
+            st.session_state.connection_status = "Connected"
+            st.success("Successfully connected to Supabase!")
+        except Exception as e:
+            st.error(f"Failed to connect to Supabase: {str(e)}")
+            st.session_state.connection_status = "Error"
     else:
         st.session_state.connection_status = "Not Connected"
         st.error("Supabase credentials not found. Please set SUPABASE_URL and SUPABASE_KEY environment variables.")
